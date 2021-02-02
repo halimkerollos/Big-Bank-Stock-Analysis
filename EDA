@@ -1,0 +1,88 @@
+from pandas_datareader import data, wb
+import pandas as pd
+import numpy as np
+import datetime
+%matplotlib inline
+
+tickers = ['BAC','C','GS','JPM','MS','WFC']
+
+#Webscraping the data for these 6 Banks
+
+BAC = data.DataReader('BAC', 'stooq', 'Jan 1 2006')
+C = data.DataReader('C', 'stooq', 'Jan 1 2006')
+GS = data.DataReader('GS', 'stooq', 'Jan 1 2006')
+JPM = data.DataReader('JPM', 'stooq', 'Jan 1 2006')
+MS = data.DataReader('MS', 'stooq', 'Jan 1 2006')
+WFC = data.DataReader('WFC', 'stooq', 'Jan 1 2006')
+
+#Combining them all into a single dataframe with pd.concat()
+
+bank_stocks = pd.concat([BAC, C, GS, JPM, MS, WFC], keys = tickers, axis=1)
+bank_stocks.head()
+
+bank_stocks.columns.names = ['Bank Ticker','Stock Info']
+
+#Taking a crosssecion of the df and checking the max and min closing cost between each bank
+bank_stocks.xs(key='Close', axis=1, level='Stock Info').max()
+bank_stocks.xs(key='Close', axis=1, level='Stock Info').min()
+
+#creating a new df for the percent caily change in closing cost per bank
+
+returns = pd.DataFrame()
+for tick in tickers:
+    returns[tick + ' Return'] = bank_stocks[tick]['Close'].pct_change()
+    
+    import seaborn as sns
+sns.set_theme(context='notebook', style='whitegrid', palette='viridis')
+
+#creating a pairplot with seaborn to check relationships and find possible corrolations
+sns.pairplot(data = returns)
+
+#finding the dates of both the lowest and highest percent changes for each bank as well as the standar deviation
+
+returns.idxmin()
+returns.idxmax()
+returns.std()
+
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(12,6))
+sns.displot(returns.loc['2015-01-01':'2016-01-01']['JPM Return'], kind='hist', kde=True, bins = 70)
+
+plt.figure(figsize=(10,6))
+sns.displot(data=returns.loc['2008-01-01':'2009-01-01']['C Return'], kind='hist', kde=True, bins=70)
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set_style('whitegrid')
+%matplotlib inline
+
+# Optional Plotly Method Imports
+from plotly import __version__
+from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
+import plotly.graph_objects as go
+import cufflinks as cf
+cf.go_offline()
+init_notebook_mode(connected=True)
+
+close = bank_stocks.xs(key='Close', axis=1, level='Stock Info')
+close.iplot(kind='scatter', mode='lines+markers', size = .5, width = .5)
+
+plt.figure(figsize=(16,6))
+sns.lineplot(data = bank_stocks.xs(key='Close', axis=1, level='Stock Info'), markers=False)
+
+bank_stocks.xs(key='Close', axis=1, level='Stock Info').iplot()
+
+plt.figure(figsize=(18,6))
+sns.lineplot(data=bank_stocks['BAC'].loc['2008-01-01':'2009-01-01']['Close'].rolling(30).mean(), label='30 Day Avg')
+sns.lineplot(data=bank_stocks['BAC'].loc['2008-01-01':'2009-01-01']['Close'], label='BAC Close')
+
+sns.heatmap(bank_stocks.xs(key='Close', axis=1, level='Stock Info').corr(), cmap='magma', annot=True)
+sns.clustermap(bank_stocks.xs(key='Close', axis=1, level='Stock Info').corr(), cmap='magma', annot=True)
+
+close_corr=bank_stocks.xs(key='Close', axis=1, level='Stock Info').corr()
+close_corr.iplot(kind='heatmap', colorscale='rdylbu')
+
+bank_stocks['BAC'].loc['2015-01-01':'2016-01-01'].iplot(kind='candle')
+bank_stocks['MS'].loc['2015-01-01':'2016-01-01'].ta_plot(study='sma')
+bank_stocks['BAC'].loc['2015-01-01':'2016-01-01'].ta_plot(study='boll')
